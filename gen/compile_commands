@@ -1,0 +1,4 @@
+make clean
+export OUTDIR=out
+mkdir -p $OUTDIR
+bear --output ${OUTDIR}/compile_commands.json -- make -j4

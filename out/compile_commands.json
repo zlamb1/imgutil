@@ -1,0 +1,15 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/cc",
+      "-c",
+      "-Iinclude",
+      "-o",
+      "out/ext4cp",
+      "src/main.c"
+    ],
+    "directory": "/home/zachary/Documents/imgutil",
+    "file": "/home/zachary/Documents/imgutil/src/main.c",
+    "output": "/home/zachary/Documents/imgutil/out/ext4cp"
+  }
+]
