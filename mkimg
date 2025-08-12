@@ -1,0 +1,11 @@
+export OUTDIR=out
+export IMG=${OUTDIR}/ext2.img
+export TESTFILE=${OUTDIR}/test
+
+make -j8
+rm -f $IMG
+rm -f $TESTFILE
+echo 'abc' > $TESTFILE
+dd if=/dev/zero of=$IMG bs=1M count=1 >/dev/null
+mkfs.ext2 $IMG >/dev/null
+./${OUTDIR}/ext2cp $IMG $TESTFILE /test

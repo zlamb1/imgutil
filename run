@@ -1,3 +1,0 @@
-make -j8
-
-./out/ext4cp

@@ -3,13 +3,13 @@ OUTDIR ?= out
 INCDIR := include
 SRCDIR := src
 
-EXT4CP      := $(OUTDIR)/ext4cp
-EXT4CP_SRCS := $(SRCDIR)/main.c
-EXT4CP_DEP  := $(EXT4CP).d
+EXT2CP      := $(OUTDIR)/ext2cp
+EXT2CP_SRCS := $(SRCDIR)/linux/file.c $(SRCDIR)/fs/ext2.c $(SRCDIR)/file.c $(SRCDIR)/cp.c
+EXT2CP_DEP  := $(EXT2CP).d
 
 .PHONY: all clean
 
-all: $(EXT4CP)
+all: $(EXT2CP)
 
 clean:
 	rm -rf $(OUTDIR)
@@ -17,7 +17,7 @@ clean:
 $(OUTDIR):
 	mkdir -p $@
 
-$(EXT4CP): $(EXT4CP_SRCS) | $(OUTDIR)
-	$(CC) -I$(INCDIR) -MMD $(EXT4CP_SRCS) -o $@
+$(EXT2CP): $(EXT2CP_SRCS) | $(OUTDIR)
+	$(CC) -I$(INCDIR) -MMD $(EXT2CP_SRCS) -o $@
 
--include $(EXT4CP_DEP)
+-include $(EXT2CP_DEP)
