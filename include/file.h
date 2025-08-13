@@ -1,9 +1,14 @@
+#include <errno.h>
 #ifndef IO_H
 #define IO_H 1
 
 #include <stddef.h>
 
 #define ssize_t signed long
+
+#ifndef __always_inline
+#define __always_inline __attribute__ ((always_inline))
+#endif
 
 typedef enum
 {
@@ -30,23 +35,125 @@ typedef enum
   FILE_SEEK_END
 } file_seek_t;
 
-typedef struct file file_t;
+typedef struct file
+{
+  int (*get_type) (struct file *file, file_type_t *type);
+  int (*get_size) (struct file *file, size_t *size);
+  int (*seek) (struct file *file, size_t off, file_seek_t seek);
+  ssize_t (*read) (struct file *file, void *buf, size_t nbytes);
+  ssize_t (*write) (struct file *file, const void *buf, size_t nbytes);
+  void (*close) (struct file *file);
+  void (*destroy) (struct file *file);
+} file_t;
 
 file_t *file_open (const char *name, file_oflags_t flags);
-void file_close (file_t *file);
-void file_destroy (file_t *file);
 
-int file_get_type (file_t *file, file_type_t *type);
-int file_get_size (file_t *file, size_t *size);
+__always_inline static int
+file_get_type (file_t *file, file_type_t *type)
+{
+  if (file->get_type == NULL)
+    {
+      errno = -ENOSYS;
+      return -1;
+    }
+  return file->get_type (file, type);
+}
 
-int file_seek (file_t *file, size_t off, file_seek_t origin);
+__always_inline static int
+file_get_size (file_t *file, size_t *size)
+{
+  if (file->get_size == NULL)
+    {
+      errno = -ENOSYS;
+      return -1;
+    }
+  return file->get_size (file, size);
+}
 
-ssize_t file_read (file_t *file, void *buf, size_t nbytes);
-ssize_t file_sread (file_t *file, size_t off, file_seek_t origin, void *buf,
-                    size_t nbytes);
+__always_inline static int
+file_seek (file_t *file, size_t off, file_seek_t origin)
+{
+  if (file->seek == NULL)
+    {
+      errno = -ENOSYS;
+      return -1;
+    }
+  return file->seek (file, off, origin);
+}
 
-ssize_t file_write (file_t *file, void *buf, size_t nbytes);
-ssize_t file_swrite (file_t *file, size_t off, file_seek_t origin, void *buf,
-                     size_t nbytes);
+__always_inline static ssize_t
+file_read (file_t *file, void *buf, size_t nbytes)
+{
+  if (file->read == NULL)
+    {
+      errno = -ENOSYS;
+      return -1;
+    }
+  return file->read (file, buf, nbytes);
+}
+
+__always_inline static ssize_t
+file_sread (file_t *file, size_t off, file_seek_t origin, void *buf,
+            size_t nbytes)
+{
+  ssize_t read;
+
+  if (file_seek (file, off, origin) == -1)
+    return -1;
+
+  if ((read = file_read (file, buf, nbytes)) == -1)
+    return -2;
+
+  return read;
+}
+
+__always_inline static ssize_t
+file_write (file_t *file, const void *buf, size_t nbytes)
+{
+  if (file->write == NULL)
+    {
+      errno = -ENOSYS;
+      return -1;
+    }
+
+  return file->write (file, buf, nbytes);
+}
+
+__always_inline static ssize_t
+file_swrite (file_t *file, size_t off, file_seek_t origin, const void *buf,
+             size_t nbytes)
+{
+  ssize_t write;
+
+  if (file_seek (file, off, origin) == -1)
+    return -1;
+
+  if ((write = file_write (file, buf, nbytes)) == -1)
+    return -2;
+
+  return write;
+}
+
+__always_inline static void
+file_close (file_t *file)
+{
+  if (file->close == NULL)
+    {
+      errno = -ENOSYS;
+      return;
+    }
+  file->close (file);
+}
+
+__always_inline static void
+file_destroy (file_t *file)
+{
+  if (file->destroy == NULL)
+    {
+      errno = -ENOSYS;
+      return;
+    }
+  file->destroy (file);
+}
 
 #endif

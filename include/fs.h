@@ -8,6 +8,11 @@ typedef struct
 
 typedef struct
 {
+  union
+  {
+    const char *const_error;
+    char *alloc_error;
+  };
   char *error;
   int allocated;
 } fs_init_error_t;

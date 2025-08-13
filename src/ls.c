@@ -28,18 +28,17 @@
 static const char *cp_cmd_name = "ext2cp";
 
 static file_t *img_file = NULL;
-static int nsrc_files = 0;
-static file_t **src_files = NULL;
+static int nfiles = 0;
+static file_t **files = NULL;
 static fs_t *fs = NULL;
 static char *error_msg = NULL;
 
 typedef struct
 {
   const char *img;
-  int nsrcs;
-  const char **srcs;
-  const char *dst;
-} cp_params_t;
+  int nfiles;
+  const char **files;
+} ls_params_t;
 
 static void
 cleanup (void)
@@ -47,12 +46,12 @@ cleanup (void)
   if (img_file != NULL)
     file_destroy (img_file);
 
-  if (nsrc_files && src_files != NULL)
-    for (int i = 0; i < nsrc_files; i++)
+  if (nfiles && files != NULL)
+    for (int i = 0; i < nfiles; i++)
       {
-        if (src_files[i] == NULL)
+        if (files[i] == NULL)
           continue;
-        file_destroy (src_files[i]);
+        file_destroy (files[i]);
       }
 
   if (fs != NULL)
@@ -98,12 +97,11 @@ perror:
 static void
 usage (void)
 {
-  printf ("Usage: %s [OPTION]... IMAGE SOURCE    DEST\n", cp_cmd_name);
-  printf ("   or: %s [OPTION]... IMAGE SOURCE... DIRECTORY\n", cp_cmd_name);
+  printf ("Usage: %s [OPTION]... IMAGE FILE...\n", cp_cmd_name);
 }
 
 static void
-cp_op (cp_params_t *params)
+ls_op (ls_params_t *params)
 {
   fs_init_error_t error;
 
@@ -111,22 +109,12 @@ cp_op (cp_params_t *params)
   if (img_file == NULL)
     fail ("failed to open image file: '%s'", params->img);
 
-  nsrc_files = params->nsrcs;
-  src_files = malloc (sizeof (file_t *) * nsrc_files);
-  if (src_files == NULL)
+  nfiles = params->nfiles;
+  files = malloc (sizeof (file_t *) * nfiles);
+  if (files == NULL)
     fail ("out of memory");
 
-  memset (src_files, 0, sizeof (file_t *) * nsrc_files);
-
-  for (int i = 0; i < nsrc_files; i++)
-    {
-      src_files[i] = file_open (params->srcs[i], FILE_ORDONLY);
-      if (src_files[i] == NULL)
-        fail ("failed to open source file: '%s'", params->srcs[i]);
-    }
-
-  if (params->dst[0] != '/')
-    fail ("destination must be absolute path");
+  memset (files, 0, sizeof (file_t *) * nfiles);
 
   fs = ext2_fs_init (img_file, &error);
   if (fs == NULL)
@@ -142,10 +130,9 @@ cp_op (cp_params_t *params)
 int
 main (int argc, const char **argv)
 {
-  cp_params_t params = { 0 };
-  int argn, nsrcs = 0;
+  ls_params_t params = { 0 };
+  int argn, _nfiles = 0;
 
-  /* pre-pass */
   for (argn = 1; argn < argc; argn++)
     {
       const char *arg = argv[argn];
@@ -170,7 +157,7 @@ main (int argc, const char **argv)
       if (params.img == NULL)
         params.img = arg;
       else
-        ++nsrcs;
+        ++_nfiles;
     }
 
   if (params.img == NULL)
@@ -178,36 +165,33 @@ main (int argc, const char **argv)
 
   params.img = NULL;
 
-  if (!nsrcs)
+  if (!_nfiles)
     fail ("missing source operand");
 
-  if (!--nsrcs)
+  if (!--_nfiles)
     fail ("missing destination operand");
 
-  params.srcs = malloc (sizeof (const char *) * nsrcs);
-  if (params.srcs == NULL)
+  params.files = malloc (sizeof (const char *) * _nfiles);
+  if (params.files == NULL)
     fail ("out of memory");
 
-  for (argn = 1; argn < argc; argn++)
-    {
-      const char *arg = argv[argn];
+  params.img = NULL;
 
-      if (arg[0] == '-')
+  for (int i = 1; i < argc; i++)
+    {
+      if (argv[i][0] == '-')
         continue;
 
       if (params.img == NULL)
-        params.img = arg;
-      else if (params.nsrcs < nsrcs)
-        params.srcs[params.nsrcs++] = arg;
+        params.img = argv[i];
       else
-        params.dst = arg;
+        params.files[params.nfiles++] = argv[i];
     }
 
   assert (params.img);
-  assert (params.nsrcs && params.srcs);
-  assert (params.dst);
+  assert (params.nfiles && params.files);
 
-  cp_op (&params);
+  ls_op (&params);
 
   return 0;
 }
