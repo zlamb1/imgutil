@@ -45,14 +45,15 @@ static void
 cleanup (void)
 {
   if (img_file != NULL)
-    file_destroy (img_file);
+    file_close (img_file);
 
   if (nsrc_files && src_files != NULL)
     for (int i = 0; i < nsrc_files; i++)
       {
         if (src_files[i] == NULL)
           continue;
-        file_destroy (src_files[i]);
+
+        file_close (src_files[i]);
       }
 
   if (fs != NULL)

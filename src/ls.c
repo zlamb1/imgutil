@@ -25,7 +25,7 @@
 
 #endif
 
-static const char *cp_cmd_name = "ext2cp";
+static const char *cp_cmd_name = "ext2ls";
 
 static file_t *img_file = NULL;
 static int nfiles = 0;
@@ -44,24 +44,28 @@ static void
 cleanup (void)
 {
   if (img_file != NULL)
-    file_destroy (img_file);
+    file_close (img_file);
 
   if (nfiles && files != NULL)
     for (int i = 0; i < nfiles; i++)
       {
         if (files[i] == NULL)
           continue;
-        file_destroy (files[i]);
+
+        file_close (files[i]);
       }
 
   if (fs != NULL)
     ext2_fs_fini (fs);
+
+  if (error_msg != NULL)
+    free (error_msg);
 }
 
 static void
 fail (const char *fmt, ...)
 {
-  const char *internal_err = "formatting error";
+  const char *internal_err = "printf error";
   char *buf = NULL;
   int tmp, _errno;
   va_list args;

@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <sys/cdefs.h>
 #ifndef IO_H
 #define IO_H 1
 
@@ -15,8 +16,9 @@ typedef enum
   FILE_TYPE_UNKN, /* unknown */
   FILE_TYPE_FILE,
   FILE_TYPE_DIR,
-  FILE_TYPE_SPEC, /* block / char devices */
-  FILE_TYPE_SYM,  /* symbolic link */
+  FILE_TYPE_CHAR,
+  FILE_TYPE_BLOCK,
+  FILE_TYPE_SYM, /* symbolic link */
   FILE_TYPE_PIPE,
   FILE_TYPE_SOCK
 } file_type_t;
@@ -37,16 +39,40 @@ typedef enum
 
 typedef struct file
 {
+  struct dir *(*opendir) (struct file *file);
   int (*get_type) (struct file *file, file_type_t *type);
   int (*get_size) (struct file *file, size_t *size);
   int (*seek) (struct file *file, size_t off, file_seek_t seek);
   ssize_t (*read) (struct file *file, void *buf, size_t nbytes);
   ssize_t (*write) (struct file *file, const void *buf, size_t nbytes);
   void (*close) (struct file *file);
-  void (*destroy) (struct file *file);
 } file_t;
 
+typedef struct dentry
+{
+  file_type_t type;
+  char *name;
+} dentry_t;
+
+typedef struct dir
+{
+  dentry_t *(*readdir) (struct dir *dir);
+  void (*rewinddir) (struct dir *dir);
+  void (*closedir) (struct dir *dir);
+} dir_t;
+
 file_t *file_open (const char *name, file_oflags_t flags);
+
+__always_inline static dir_t *
+file_open_dir (file_t *file)
+{
+  if (file->opendir == NULL)
+    {
+      errno = -ENOSYS;
+      return NULL;
+    }
+  return file->opendir (file);
+}
 
 __always_inline static int
 file_get_type (file_t *file, file_type_t *type)
@@ -145,15 +171,37 @@ file_close (file_t *file)
   file->close (file);
 }
 
-__always_inline static void
-file_destroy (file_t *file)
+__always_inline static dentry_t *
+dir_readdir (dir_t *dir)
 {
-  if (file->destroy == NULL)
+  if (dir->readdir == NULL)
+    {
+      errno = -ENOSYS;
+      return NULL;
+    }
+  return dir->readdir (dir);
+}
+
+__always_inline static void
+dir_rewinddir (dir_t *dir)
+{
+  if (dir->rewinddir == NULL)
     {
       errno = -ENOSYS;
       return;
     }
-  file->destroy (file);
+  dir->rewinddir (dir);
+}
+
+__always_inline static void
+dir_closedir (dir_t *dir)
+{
+  if (dir->closedir == NULL)
+    {
+      errno = -ENOSYS;
+      return;
+    }
+  dir->closedir (dir);
 }
 
 #endif
